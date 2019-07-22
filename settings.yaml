@@ -1,0 +1,51 @@
+version: 1.0.0
+
+keybindings:
+  # <key reported by prompt-toolkit> : <command to send to Xi>
+  # ".commands" are special commands implemented in the `Actions` class.
+  # For a list of "Xi commands", see https://github.com/xi-editor/xi-editor/blob/master/rust/core-lib/src/rpc.rs (EditNotification enum)
+
+  "up": "move_up"
+  "down": "move_down"
+  "left": "move_left"
+  "right": "move_right"
+  "c-left": "move_word_left"
+  "c-right": "move_word_right"
+  "s-up": "move_up_and_modify_selection"
+  "s-down": "move_down_and_modify_selection"
+  "s-left": "move_left_and_modify_selection"
+  "s-right": "move_right_and_modify_selection"
+
+  "pageup": "scroll_page_up"
+  "pagedown": "scroll_page_down"
+  "home": "move_to_left_end_of_line"
+  "end": "move_to_right_end_of_line"
+  "s-home": "move_to_left_end_of_line_and_modify_selection"
+  "s-end": "move_to_right_end_of_line_and_modify_selection"
+  "delete": "delete_forward"
+  "c-h": "delete_backward"  # backspace
+  "c-m": "insert_newline"  # enter
+  "c-i": "indent"  # tab
+  "s-tab": "outdent"
+  # "c-@": "..."  # c-space
+
+  # "c-t": "transpose"
+
+  # Ctrl + <key>
+  "c-a": "select_all"
+  "c-c": ".copy"
+  "c-f": ".find"
+  "c-n": ".new_view"
+  "c-p": ".menu"
+  "c-s": ".save"
+  "c-v": ".paste"
+  "c-x": ".cut"
+  "c-y": "redo"
+  "c-z": "undo"
+
+  # Multi cursor
+  "c-d": ".multicursor"
+  "c-k": ".multicursor_skip"  # TODO: Only in multicursor mode
+  # TODO: "escape-[1;4A": "add_selection_above"
+  # TODO: "escape-[1;4B": "add_selection_below"
+  # @kb.add('escape', 'f')
