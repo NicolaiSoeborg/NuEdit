@@ -3,6 +3,7 @@ import sys
 from multiprocessing import freeze_support
 # from gevent import monkey; monkey.patch_socket()
 
+from .keybinding import test_keybindings
 from .editor import editor
 
 logging.basicConfig(
@@ -14,4 +15,8 @@ logging.basicConfig(
 
 if __name__ == '__main__':
     freeze_support()  # py2exe support, etc
-    editor(sys.argv[1:])
+
+    if '--test' in sys.argv:
+        test_keybindings()
+    else:
+        editor(sys.argv[1:])

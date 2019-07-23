@@ -28,7 +28,6 @@ keybindings:
   "c-i": "indent"  # tab
   "s-tab": "outdent"
   # "c-@": "..."  # c-space
-
   # "c-t": "transpose"
 
   # Ctrl + <key>
@@ -43,9 +42,12 @@ keybindings:
   "c-y": "redo"
   "c-z": "undo"
 
+  # alt + left/right
+  "c-s-right": ".next_view"
+  "c-s-left": ".previous_view"
+
   # Multi cursor
   "c-d": ".multicursor"
   "c-k": ".multicursor_skip"  # TODO: Only in multicursor mode
-  # TODO: "escape-[1;4A": "add_selection_above"
-  # TODO: "escape-[1;4B": "add_selection_below"
-  # @kb.add('escape', 'f')
+  "c-s-up": "add_selection_above"
+  "c-s-down": "add_selection_below"

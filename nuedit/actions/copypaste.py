@@ -18,7 +18,7 @@ def cut(params: dict, view, rpc_channel: mp.Queue) -> None:
 
 def paste(params: dict, view, rpc_channel: mp.Queue) -> None:
     text = view.app.clipboard.get_data()
-    view_id = params['view_id']
+    view_id = params.get('view_id') or view.current_view.view_id
     if text.type == 'CHARACTERS':
         rpc_channel.edit('paste', {'chars': text.text}, view_id )
     else:
