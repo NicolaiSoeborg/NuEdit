@@ -120,7 +120,7 @@ class FileList:
         def mouse_handler(mouse_event: MouseEvent) -> None:
             if mouse_event.event_type == MouseEventType.MOUSE_UP:
                 self._selected_index = mouse_event.position.y
-                self._handler(self._selected_index)
+                self._handler(self.values[self._selected_index])
 
         result = []
         for i, value in enumerate(self.values):
@@ -154,7 +154,7 @@ class Filemanager:
             buttons = [cancel_button],
             with_background = True)
 
-    def __pt_container__(self) -> Container:
+    def __pt_container__(self):
         return self.window
 
     @property
