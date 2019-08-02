@@ -1,10 +1,11 @@
 from __future__ import annotations
+import logging
 import os
 
 from typing import Callable, List
 from pathlib import Path
 
-from prompt_toolkit.application.current import get_app
+# from prompt_toolkit.application.current import get_app
 from prompt_toolkit.layout.containers import HSplit
 from prompt_toolkit.layout.dimension import Dimension as D
 from prompt_toolkit.widgets import (
@@ -30,55 +31,15 @@ from prompt_toolkit.filters import Condition
 #         yield Completion('completion4', start_position=0, display=HTML('<b>completion</b><ansired>1</ansired>'), style='bg:ansiyellow')
 
 
-def get_filemanager_kb(lst: FileList, kb_active: Condition):
-    kb = KeyBindings()
-
-    @kb.add('up')
-    def _(event: E) -> None:
-        lst._selected_index = max(0, lst._selected_index - 1)
-
-    @kb.add('down')
-    def _(event: E) -> None:
-        lst._selected_index = min(len(lst.values) - 1, lst._selected_index + 1)
-
-    @kb.add('pageup')
-    def _(event: E) -> None:
-        w = event.app.layout.current_window
-        lst._selected_index = max(0, lst._selected_index - len(w.render_info.displayed_lines))
-
-    @kb.add('pagedown')
-    def _(event: E) -> None:
-        w = event.app.layout.current_window
-        lst._selected_index = min(len(lst.values) - 1, lst._selected_index + len(w.render_info.displayed_lines))
-
-    @kb.add('enter')
-    def _(event: E) -> None:
-        lst._handler(lst.selected)
-
-    @kb.add('escape')
-    def _(event: E) -> None:
-        event.app.exit()
-
-    @kb.add('<any>')
-    def _(event: E) -> None:
-        # We first check values after the selected value, then all values.
-        for value in lst.values[lst._selected_index + 1:] + lst.values:
-            if value.startswith(event.data):
-                lst._selected_index = lst.values.index(value)
-                return
-
-    return ConditionalKeyBindings(kb, filter=kb_active)
-
-
 class FileList:
     STYLE_FILE = ''
     STYLE_DIR = ''
     STYLE_OTHER = 'fg:red'
 
-    def __init__(self, dir: Path, handler: Callable[[str], None], kb_active: Condition):
+    def __init__(self, fm: Filemanager, handler: Callable[[str], None]):
         self.values: List[str] = []
         self._styles = []
-        for f in dir.iterdir():
+        for f in fm.cwd.iterdir():
             if f.is_file():
                 self.values.append(f.name)
                 self._styles.append(FileList.STYLE_FILE)
@@ -98,7 +59,7 @@ class FileList:
         self.input_field = FormattedTextControl(
             self._get_text_fragments,
             show_cursor=False,
-            key_bindings=get_filemanager_kb(self, kb_active),
+            key_bindings=self._get_filemanager_kb(fm),
             focusable=True)
 
         self.window = Window(
@@ -115,6 +76,46 @@ class FileList:
     @property
     def selected(self) -> str:
         return self.values[self._selected_index]
+
+    def _get_filemanager_kb(self, fm: Filemanager):
+        kb_active = Condition(lambda: fm.view.fileman_visible)
+        kb = KeyBindings()
+
+        @kb.add('up')
+        def _(event: E) -> None:
+            self._selected_index = max(0, self._selected_index - 1)
+
+        @kb.add('down')
+        def _(event: E) -> None:
+            self._selected_index = min(len(self.values) - 1, self._selected_index + 1)
+
+        @kb.add('pageup')
+        def _(event: E) -> None:
+            w = event.app.layout.current_window
+            self._selected_index = max(0, self._selected_index - len(w.render_info.displayed_lines))
+
+        @kb.add('pagedown')
+        def _(event: E) -> None:
+            w = event.app.layout.current_window
+            self._selected_index = min(len(self.values) - 1, self._selected_index + len(w.render_info.displayed_lines))
+
+        @kb.add('enter')
+        def _(event: E) -> None:
+            self._handler(self.selected)
+
+        @kb.add('escape')
+        def _(event: E) -> None:
+            fm.view.app.layout.focus(fm.cancel_button)
+
+        @kb.add('<any>')
+        def _(event: E) -> None:
+            # We first check values after the selected value, then all values.
+            for value in self.values[self._selected_index + 1:] + self.values:
+                if value.startswith(event.data):
+                    self._selected_index = self.values.index(value)
+                    return
+
+        return ConditionalKeyBindings(kb, filter=kb_active)
 
     def _get_text_fragments(self):
         def mouse_handler(mouse_event: MouseEvent) -> None:
@@ -141,9 +142,9 @@ class Filemanager:
     def __init__(self, view):
         self.view = view
         self.cwd = Path('.')
-        cancel_button = Button(text="Exit", handler=self.exit_handler)
+        self.cancel_button = Button(text="Exit", handler=self.exit_handler)
 
-        self.filelist = FileList(self.cwd, view.new_view, Condition(lambda: view.fileman_visible))
+        self.filelist = FileList(self, view.new_view)
 
         self.window = Dialog(
             title = "Browse files",
@@ -151,7 +152,7 @@ class Filemanager:
                 Label(text = f"Dir: {self.cwd}", dont_extend_height = True),
                 self.filelist,
             ], padding = D(preferred=1, max=1)),
-            buttons = [cancel_button],
+            buttons = [self.cancel_button],
             with_background = True)
 
     def __pt_container__(self):
@@ -162,8 +163,10 @@ class Filemanager:
         return self.filelist.input_field
 
     def exit_handler(self) -> None:
+        logging.debug("[FileMan] exit_handler")
         if len(self.view.views) == 0:
-            get_app().exit()
+            logging.debug("[FileMan] Calling app.exit()")
+            self.view.app.exit()
         else:
             self.view.fileman_visible = False
             self.view.set_focus(

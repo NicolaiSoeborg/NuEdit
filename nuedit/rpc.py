@@ -61,7 +61,7 @@ class RpcController:
 
     def _receive(self) -> dict:
         raw = self.core.stdout.readline()
-        #logging.debug("[RPC] Receiving {}".format((raw or "[none] ")[:-1])
+        logging.debug("[RPC] Receiving {}".format((raw or "[none] ")[:-1]))
         return json.loads(raw or '{}')
 
     @staticmethod

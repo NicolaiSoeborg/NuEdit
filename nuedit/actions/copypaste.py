@@ -10,11 +10,13 @@ def copy(params: dict, view, rpc_channel: mp.Queue) -> None:
     rpc_channel.edit_request('edit', {'method': 'copy', 'view_id': view_id}, result)
     view.app.clipboard.set_text(result.get() or "")
 
+
 def cut(params: dict, view, rpc_channel: mp.Queue) -> None:
     result = view.manager.Queue()
     view_id = params.get('view_id') or view.current_view.view_id
     rpc_channel.edit_request('edit', {'method': 'cut', 'view_id': view_id}, result)
     view.app.clipboard.set_text(result.get() or "")
+
 
 def paste(params: dict, view, rpc_channel: mp.Queue) -> None:
     text = view.app.clipboard.get_data()

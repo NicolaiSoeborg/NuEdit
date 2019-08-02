@@ -51,3 +51,4 @@ keybindings:
   "c-k": ".multicursor_skip"  # TODO: Only in multicursor mode
   "c-s-up": "add_selection_above"
   "c-s-down": "add_selection_below"
+

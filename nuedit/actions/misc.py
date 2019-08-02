@@ -1,4 +1,9 @@
 import multiprocessing as mp
+from ..menu import SearchToolbar
+
+def find(params: dict, view, rpc_channel: mp.Queue) -> None:
+    view.toolbar = SearchToolbar(view)
+    view.app.layout.focus(view.toolbar)
 
 
 def new_view(params: dict, view, rpc_channel: mp.Queue) -> None:
@@ -21,7 +26,7 @@ def next_view(params: dict, view, rpc_channel: mp.Queue) -> None:
         if view.app.layout.has_focus(v):
             _set_focus(view, lst[(i + 1) % len(lst)])
             break
-    #view.app.layout.focus_next()
+    # view.app.layout.focus_next()
 
 
 def previous_view(params: dict, view, rpc_channel: mp.Queue) -> None:
@@ -30,7 +35,7 @@ def previous_view(params: dict, view, rpc_channel: mp.Queue) -> None:
         if view.app.layout.has_focus(v):
             _set_focus(view, lst[(i - 1) % len(lst)])
             break
-    #view.app.layout.focus_previous()
+    # view.app.layout.focus_previous()
 
 
 def _set_focus(view, elm):

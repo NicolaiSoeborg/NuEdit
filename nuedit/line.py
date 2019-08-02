@@ -61,6 +61,8 @@ def mouse_handler(sview, xy: tuple, mouse_event: MouseEvent) -> None:
 
 
 class Line:
+    __slots__ = ['text', 'ln', 'valid', 'cursor', 'styles']
+
     def __init__(self, text='', ln=' ', valid=False, **kwargs):
         # newline = shared_settings['settings']['line_ending']
         self.text = text[:-1] + ' \n'  # add "secret last space" (when cursor in last line position)
@@ -113,7 +115,7 @@ class Line:
 
 
 class Lines(list):
-    def __init__(self, shared_styles = {}, *args):
+    def __init__(self, shared_styles=dict, *args):
         super(Lines, self).__init__(*args)
         self.annotations = []
         self.shared_styles = shared_styles

@@ -8,9 +8,16 @@ from prompt_toolkit.filters import Condition
 import nuedit.actions as ACTIONS
 
 
-def undo(view, rpc_channel: mp.Queue):
-    (action, params) = view.current_view.undo_stack.pop()
-    getattr(ACTIONS, action)(params, view, rpc_channel)
+def do_action(view, action: str, params: dict):
+    logging.debug("[Action] Calling {}({})".format(action, params))
+    result = getattr(ACTIONS, action)(params, view, view.rpc_channel)
+    if type(result) == bool:
+        # Actions usually returns None, but False indicate action
+        # was invalid, so do yet another undo:
+        if not result:
+            assert len(view.current_view.undo_stack) > 0, view.current_view
+            (action, params) = view.current_view.undo_stack.pop()
+            do_action(view, action, params)
 
 
 def get_view_kb(view):
@@ -19,7 +26,7 @@ def get_view_kb(view):
 
     kb = KeyBindings()
 
-    def do_action(key: str):
+    def do(key: str):
         if key not in kb_map:
             logging.debug("[KB] Unknown special key: {}".format(key))
             return
@@ -27,32 +34,32 @@ def get_view_kb(view):
         if kb_map[key][0] == '.':
             action = kb_map[key][1:]
             assert action[0] != '_'
-            logging.debug("[KB] Calling {} (KB: {})".format(action, key))
-            getattr(ACTIONS, action)({}, view, rpc_channel)
+            do_action(view, action, {})
         else:
             rpc_channel.edit(kb_map[key])
 
     @kb.add('escape', '[', '1', ';', '4', 'A', eager=True)
-    def c_s_up(_): do_action('c-s-up')
+    def c_s_up(_): do('c-s-up')
 
     @kb.add('escape', '[', '1', ';', '4', 'B', eager=True)
-    def c_s_down(_): do_action('c-s-down')
+    def c_s_down(_): do('c-s-down')
 
     @kb.add('escape', '[', '1', ';', '6', 'D', eager=True)
-    def c_s_left(_): do_action('c-s-left')
+    def c_s_left(_): do('c-s-left')
 
     @kb.add('escape', '[', '1', ';', '6', 'C', eager=True)
-    def c_s_left(_): do_action('c-s-right')
+    def c_s_right(_): do('c-s-right')
 
     @kb.add('escape', filter=Condition(lambda: len(view.current_view.undo_stack) > 0))
     def kb_undo(_):
-        undo(view, rpc_channel)
+        (action, params) = view.current_view.undo_stack.pop()
+        do_action(view, action, params)
 
     @kb.add('<any>')
     def _(event):
         for sequence in event.key_sequence:
             if sequence.key in SPECIAL_KEYS:
-                do_action(sequence.key)
+                do(sequence.key)
             else:
                 rpc_channel.edit('insert', {'chars': sequence.key})
 

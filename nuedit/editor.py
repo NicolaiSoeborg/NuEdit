@@ -1,6 +1,7 @@
 import logging
 import multiprocessing as mp
 import threading
+from time import sleep
 from typing import Any, Dict, Optional, Union
 from yaml import safe_load
 
@@ -54,15 +55,17 @@ def editor(files: list):
         logging.debug("[MAIN] RPC ready")
 
         v = View(manager, shared_state, rpc_channel)
-        v.fileman_visible = len(files) < 2
+        v.fileman_visible = len(files) == 0
         for file in files:
             v.new_view(file)
 
         v.app.run()  # blocks until editor exits
-
         logging.debug("[MAIN] Shutting down")
 
         assert len(v.views) == 0, "Views not closed: {}".format(v.views)
+        # while len(v.views) != 0:
+        #    print("Waiting for {} to shutdown.".format(v.views.keys()))
+        #    sleep(.1)
         rpc_channel.f('kill')
         p.join()
 

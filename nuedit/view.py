@@ -3,22 +3,23 @@ import logging
 import threading
 import multiprocessing as mp
 from collections import OrderedDict
-from time import time
+from time import time, sleep
 
-from typing import Union
+from typing import Any, Dict, List
 
 from prompt_toolkit import Application
-from prompt_toolkit.application.current import get_app
+# from prompt_toolkit.application.current import get_app
 from prompt_toolkit.clipboard import InMemoryClipboard
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.containers import DynamicContainer, Container, Window, HSplit, VSplit
 from prompt_toolkit.layout.layout import Layout
 from prompt_toolkit.output.color_depth import ColorDepth
-from prompt_toolkit.widgets import HorizontalLine, VerticalLine, TextArea
+from prompt_toolkit.widgets import HorizontalLine, VerticalLine
 from prompt_toolkit.widgets.base import Border
 
 from .line import Lines
 from .filemanager import Filemanager
+from .menu import Toolbar
 from .keybinding import get_view_kb
 
 
@@ -27,11 +28,12 @@ class SimpleView:
         self.file_path = file_path
         self.view_id = view_id
         self.global_view = global_view
+        self._debug_update_timer = time()
 
         self.config = {}  # font size, word wrap, line ending, etc
         self.undo_stack = [('close_view', {'view_id': view_id})]
         self.lines = Lines(shared_styles=global_view.shared_state['styles'])
-        self.is_dirty = False
+        self.is_dirty = None
 
         self.input_field = Window(
             content=FormattedTextControl(
@@ -80,15 +82,15 @@ class SimpleView:
         self.lineNo.content.text = new_lineNo
         self.lineNo.width = len_of_lineno_col
         self.input_field.content.text = new_text
-        get_app().invalidate()  # <-- redraw content
-        logging.debug("[SimpleView] Update took {:.4f}s".format(time() - self._debug_update_timer))
+        self.global_view.app.invalidate()  # <-- redraw content
+        logging.debug("[SimpleView] Update + redraw took {:.5f}s".format(time() - self._debug_update_timer))
 
     # Commands from Xi below
     def language_changed(self, language_id: str):
         pass
 
     def available_plugins(self, plugins: list):
-        self.plugins = plugins
+        self.config['plugins'] = plugins
 
     def config_changed(self, changes: dict):
         self.config.update(changes)
@@ -103,8 +105,7 @@ class SimpleView:
         pass  # "frontend should scroll its cursor to the given line and column."
 
     def find_status(self, queries: list):
-        pass
-        # queries = [{'case_sensitive': False, 'chars': 'HELLO', 'id': 1, 'is_regex': False, 'lines': [1, 1, 3, 4], 'matches': 4, 'whole_words': True}]
+        pass  # for query in queries:
 
 
 class View:
@@ -115,7 +116,11 @@ class View:
 
         self.fileman = Filemanager(self)
         self.fileman_visible = True
+
+        self.toolbar = Toolbar(self)
+
         self.views = OrderedDict()  # type: Dict[str, SimpleView]
+
         self.app = Application(
             full_screen=True,
             mouse_support=True,
@@ -125,16 +130,22 @@ class View:
             # key_bindings=get_filemanager_kb()
             layout=Layout(
                 container=HSplit([
-                    DynamicContainer(lambda: VSplit(
-                        children=[sview for sview in self.views.values()] + ([self.fileman] if self.fileman_visible else []),
-                        padding_char=Border.VERTICAL,
-                        padding=1,
-                        padding_style='#ffff00'
-                    ))
+                    DynamicContainer(self._get_children),
+                    DynamicContainer(lambda: self.toolbar)
                 ]),
-                focused_element=(self.current_view or self.fileman).input_field,
+                # focused_element=(self.current_view or self.fileman).input_field,
             ),
         )
+
+    def _get_children(self):
+        children = ([self.fileman] if self.fileman_visible else []) \
+            + list(self.views.values())
+        return VSplit(
+            children=children,
+            padding_char=Border.VERTICAL,
+            padding=1,
+            padding_style='#ffff00'
+        ) if len(children) > 0 else Window()  # VSplit([]) will raise Exception
 
     @property
     def current_view(self) -> SimpleView:
@@ -142,7 +153,21 @@ class View:
 
     def set_focus(self, view_id: str) -> None:
         self.shared_state['focused_view'] = view_id
-        self.app.layout.focus(self.current_view.input_field)
+        # When creating a new_view then set_focus will be called immediately after
+        # This will create a race-condition between app.focus("LOADING...") and the
+        # "LOADING..." component being replaced by the actually content (SimpleView
+        # starts a thread that listen on the RPC channel, which often takes "a while"
+        # so wait for the app to be ready (is_dirty != None) before calling set_focus:
+        threading.Thread(target=self._set_focus, args=(view_id, )).start()
+
+    def _set_focus(self, view_id: str) -> None:
+        # Break if multiple threads are competing for focus:
+        while self.shared_state['focused_view'] == view_id:
+            if self.current_view.is_dirty is not None:
+                self.app.layout.focus(self.current_view.input_field)
+                break
+            else:
+                sleep(.1)
 
     def new_view(self, file_path: str = None):
         channel = self.manager.Queue()
