@@ -20,6 +20,7 @@ class SearchToolbar(Toolbar):
     def __init__(self, view):
         super().__init__(view)
         self._find_idx = 0
+        self._last_search_str = None
 
         self.control = BufferControl(
             focus_on_click=True,
@@ -49,14 +50,15 @@ class SearchToolbar(Toolbar):
         regex = re.fullmatch(r'/(.+)/([gi]?)', buffer.text)
 
         found_result = [a for a in self.view.current_view.lines.annotations if a['type'] == 'find']
-        if len(found_result) == 0:
+        if len(found_result) == 0 or self._last_search_str != buffer.text:
             self.view.rpc_channel.edit('find', {
                 'chars': regex.group(1) if regex else buffer.text,
-                'case_sensitive': 'i' in regex.group(2) if regex else False,
+                'case_sensitive': 'i' not in regex.group(2) if regex else False,
                 'regex': bool(regex),
                 # 'whole_words' : False,
             })
             self._find_idx = 0
+            self._last_search_str = buffer.text
             return True  # <-- keep text
 
         assert len(found_result) == 1
@@ -75,12 +77,6 @@ class SearchToolbar(Toolbar):
             'col': end_col,
             'ty': {'select_extend': {'granularity': 'point', 'multi': False}}
         })
-
-        # Then find next result:
-        #self.view.rpc_channel.edit('find_next', {
-        #    'wrap_around': 'g' in regex.group(2) if regex else False,
-        #    'allow_same': True,
-        #})
         return True  # <-- keep text
 
     def _get_kb(self):
