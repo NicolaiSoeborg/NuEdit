@@ -18,7 +18,8 @@ from .toolbar import Toolbar
 
 class SearchToolbar(Toolbar):
     def __init__(self, view):
-        super().__init__(view)
+        super(SearchToolbar, self).__init__(view)
+
         self._find_idx = 0
         self._last_search_str = None
 
@@ -37,14 +38,6 @@ class SearchToolbar(Toolbar):
                 accept_handler=self.handler
             )
         )
-        self.container = Window(
-            content=self.control,
-            height=1,
-            style="bg:#3200ff",
-        )
-
-    def __pt_container__(self) -> Container:
-        return self.container
 
     def handler(self, buffer: Buffer):
         regex = re.fullmatch(r'/(.+)/([gi]?)', buffer.text)
@@ -84,9 +77,6 @@ class SearchToolbar(Toolbar):
 
         @kb.add('escape')
         def _(event):
-            # if self.view.current_view.lines.has_selection:
-            #    self.view.rpc_channel.edit('collapse_selections')
-            # else:
             self.view.toolbar = Toolbar(self.view)  # Hide "Find: " and fix focus:
             self.view.app.layout.focus((self.view.current_view or self.view.fileman).input_field)
 

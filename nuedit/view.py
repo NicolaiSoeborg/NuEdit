@@ -8,7 +8,6 @@ from time import time, sleep
 from typing import Any, Dict, List
 
 from prompt_toolkit import Application
-# from prompt_toolkit.application.current import get_app
 from prompt_toolkit.clipboard import InMemoryClipboard
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.containers import DynamicContainer, Container, Window, HSplit, VSplit
@@ -163,11 +162,11 @@ class View:
     def _set_focus(self, view_id: str) -> None:
         # Break if multiple threads are competing for focus:
         while self.shared_state['focused_view'] == view_id:
-            if self.current_view.is_dirty is not None:
+            if self.current_view.is_dirty is None:
+                sleep(.1)
+            else:
                 self.app.layout.focus(self.current_view.input_field)
                 break
-            else:
-                sleep(.1)
 
     def new_view(self, file_path: str = None):
         channel = self.manager.Queue()
