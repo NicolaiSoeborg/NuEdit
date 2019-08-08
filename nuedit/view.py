@@ -4,7 +4,6 @@ import threading
 import multiprocessing as mp
 from collections import OrderedDict
 from time import time, sleep
-
 from typing import Any, Dict, List
 
 from prompt_toolkit import Application

@@ -4,4 +4,4 @@ run:
 
 .PHONY: count
 count:
-	(find nuedit/ -iname "*.py" -exec cat {} \;)  | egrep -v '^$|^ *#' | wc -l
+	(find nuedit/ -iname "*.py" -exec cat {} \;)  | egrep -v '^$$|^ *#' | wc -l

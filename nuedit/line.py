@@ -63,8 +63,7 @@ def mouse_handler(sview, xy: tuple, mouse_event: MouseEvent) -> None:
 class Line:
     __slots__ = ['text', 'ln', 'valid', 'cursor', 'styles']
 
-    def __init__(self, text='', ln=' ', valid=False, **kwargs):
-        # newline = shared_settings['settings']['line_ending']
+    def __init__(self, text='', ln=0, valid=False, **kwargs):
         self.text = text[:-1] + ' \n'  # add "secret last space" (when cursor in last line position)
         self.ln = ln
         self.valid = valid
@@ -99,7 +98,7 @@ class Line:
 
                 # self.ln is 1 indexed:
                 if start_line <= self.ln - 1 <= end_line:
-                    #logging.debug("self.ln-1={}, start_line={}, start_col={}, end_line={}, end_col={}".format(self.ln-1, start_line, start_col, end_line, end_col))
+                    # logging.debug("self.ln-1={}, start_line={}, start_col={}, end_line={}, end_col={}".format(self.ln-1, start_line, start_col, end_line, end_col))
                     start_idx = start_col if start_line == self.ln - 1 else 0
                     end_idx   = end_col   if end_line   == self.ln - 1 else len(output)
                     for i in range(start_idx, end_idx):
@@ -107,9 +106,7 @@ class Line:
 
         # Add cursors
         for cursor in self.cursor:
-            output[cursor] = add_style(
-                output[cursor], shared_styles['cursor']
-            )
+            output[cursor] = add_style(output[cursor], shared_styles['cursor'])
 
         return output
 
@@ -131,8 +128,8 @@ class Lines(list):
             n = op['n']  # lines affected
 
             if op['op'] == 'copy':
-                assert len(self[old_idx : old_idx + n]) == n, '{}[{} : {}+{}] != {}'.format(self, old_idx, old_idx, n, n)
-                #new_lines = new_lines + self[old_idx : old_idx + n]
+                # assert len(self[old_idx : old_idx + n]) == n, '{}[{} : {}+{}] != {}'.format(self, old_idx, old_idx, n, n)
+                # new_lines = new_lines + self[old_idx : old_idx + n]
                 for i in range(old_idx, old_idx + n):
                     new_lines.append(self[i])
                 old_idx += n
@@ -187,4 +184,7 @@ class Lines(list):
             line_no += str(line.ln) + '\n'
             len_of_lineno_col = line.ln
 
-        return FormattedText(output), line_no, len(str(len_of_lineno_col))
+        len_of_lineno_col = len(str(len_of_lineno_col))
+        line_no = '\n'.join(row.rjust(len_of_lineno_col, ' ') for row in line_no.split('\n'))
+
+        return FormattedText(output), line_no, len_of_lineno_col

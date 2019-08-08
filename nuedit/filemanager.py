@@ -16,7 +16,7 @@ from prompt_toolkit.widgets import (
 from prompt_toolkit.layout.margins import ScrollbarMargin
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.formatted_text import to_formatted_text
-from prompt_toolkit.layout.containers import Container, Window
+from prompt_toolkit.layout.containers import DynamicContainer, Container, Window
 from prompt_toolkit.key_binding import ConditionalKeyBindings
 from prompt_toolkit.key_binding.key_bindings import KeyBindings
 from prompt_toolkit.key_binding.key_processor import KeyPressEvent as E
@@ -37,8 +37,12 @@ class FileList:
     STYLE_OTHER = 'fg:red'
 
     def __init__(self, fm: Filemanager, handler: Callable[[str], None]):
-        self.values: List[str] = []
-        self._styles = []
+        self.fm = fm
+        self.values: List[str] = ['../']
+        self._styles = [FileList.STYLE_DIR]
+        self._selected_index: int = 0
+        self._file_handler = handler
+
         for f in fm.cwd.iterdir():
             if f.is_file():
                 self.values.append(f.name)
@@ -46,15 +50,12 @@ class FileList:
             elif f.is_dir():
                 self.values.append(f.name + '/')
                 self._styles.append(FileList.STYLE_DIR)
-            elif f.is_symlink():
-                self.values.append(f.name + ' -> ' + os.path.realpath(f))
-                self._styles.append(FileList.STYLE_FILE)
+            # elif f.is_symlink():
+            #    self.values.append(f.name + ' -> ' + os.path.realpath(f))
+            #    self._styles.append(FileList.STYLE_SYMLINK)
             else:
                 self.values.append(f.name + '|')
                 self._styles.append(FileList.STYLE_OTHER)
-
-        self._selected_index: int = 0
-        self._handler = handler
 
         self.input_field = FormattedTextControl(
             self._get_text_fragments,
@@ -101,7 +102,16 @@ class FileList:
 
         @kb.add('enter')
         def _(event: E) -> None:
-            self._handler(self.selected)
+            logging.debug("[FM] Selected: {}".format(self.selected))
+            if self.selected.endswith('/'):
+                logging.debug("[FM] Changing dir: {}".format(self.selected))
+                self.fm.change_dir(Path(self.selected))
+            elif self.selected.endswith('|'):
+                logging.debug("[FM] TODO handle: {}".format(self.selected))
+                pass  # can't open PIPEs and other weird types
+            else:
+                logging.debug("[FM] Opening: {}".format(self.selected))
+                self._file_handler(self.selected)
 
         @kb.add('escape')
         def _(event: E) -> None:
@@ -141,17 +151,17 @@ class FileList:
 class Filemanager:
     def __init__(self, view):
         self.view = view
-        self.cwd = Path('.')
+        self.cwd: Path = Path('./').resolve()
         self.cancel_button = Button(text="Exit", handler=self.exit_handler)
 
         self.filelist = FileList(self, view.new_view)
 
         self.window = Dialog(
             title = "Browse files",
-            body = HSplit([
+            body = DynamicContainer(lambda: HSplit([
                 Label(text = f"Dir: {self.cwd}", dont_extend_height = True),
                 self.filelist,
-            ], padding = D(preferred=1, max=1)),
+            ], padding = D(preferred=1, max=1))),
             buttons = [self.cancel_button],
             with_background = True)
 
@@ -161,6 +171,11 @@ class Filemanager:
     @property
     def input_field(self):
         return self.filelist.input_field
+
+    def change_dir(self, new_dir: Path):
+        self.cwd = self.cwd.joinpath(new_dir)
+        self.filelist = FileList(self, self.view.new_view)  # recreate to use new self.cwd
+        self.view.app.invalidate()  # fix focus
 
     def exit_handler(self) -> None:
         logging.debug("[FileMan] exit_handler")
