@@ -2,12 +2,13 @@ import logging
 import json
 import threading
 import multiprocessing as mp
+from multiprocessing.synchronize import Event as MpEvent
 from time import sleep
 from typing import Dict, Optional, Union
 from subprocess import Popen, PIPE, DEVNULL
 
+#from prompt_toolkit.patch_stdout import patch_stdout
 
-from prompt_toolkit.patch_stdout import patch_stdout
 #from enum import Enum, unique
 #@unique
 #class TasksEnum(Enum):
@@ -16,10 +17,10 @@ from prompt_toolkit.patch_stdout import patch_stdout
 
 
 class RpcController:
-    def __init__(self, shared_state: dict, rpc_ready: mp.Event):
+    def __init__(self, shared_state: dict, rpc_ready: MpEvent):
         self.id = 0
         self.shared_state = shared_state
-        self.backlog = {}  # type: Dict[int, mp.Queue]
+        self.backlog: dict[int, mp.Queue] = {}
         self.core = Popen(["/tmp/xi-core"],
             stdin=PIPE, stdout=PIPE, stderr=DEVNULL,
             universal_newlines=True, bufsize=1
@@ -41,7 +42,7 @@ class RpcController:
         view_id = self.shared_state['focused_view'] if view_id is None else view_id
         self.notify('edit', {'method': method, 'params': params, 'view_id': view_id})
 
-    def edit_request(self, method: str, params: Optional[dict], result: mp.Queue) -> None:
+    def edit_request(self, method: str, params: dict, result: mp.Queue) -> None:
         """ Special handling of some 'edit' methods (copy/cut/etc). """
         assert result is not None, "edit_request will return a result"
         self.request(method, params, result)
@@ -56,10 +57,12 @@ class RpcController:
 
     def send_raw_dict(self, d: dict) -> None:
         logging.debug("[RPC] Sending {}".format(json.dumps(d)))
+        assert self.core.stdin is not None
         self.core.stdin.write(json.dumps(d) + "\n")
         self.core.stdin.flush()
 
     def _receive(self) -> dict:
+        assert self.core.stdout is not None
         raw = self.core.stdout.readline()
         logging.debug("[RPC] Receiving {}".format((raw or "[none] ")[:-1]))
         return json.loads(raw or '{}')

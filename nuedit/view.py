@@ -4,7 +4,7 @@ import threading
 import multiprocessing as mp
 from collections import OrderedDict
 from time import time, sleep
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from prompt_toolkit import Application
 from prompt_toolkit.clipboard import InMemoryClipboard
@@ -22,7 +22,7 @@ from .keybinding import get_view_kb
 
 
 class SimpleView:
-    def __init__(self, file_path: str, channel: mp.Queue, view_id: str, global_view: View):
+    def __init__(self, file_path: Optional[str], channel: mp.Queue, view_id: str, global_view: View):
         self.file_path = file_path
         self.view_id = view_id
         self.global_view = global_view
@@ -31,7 +31,7 @@ class SimpleView:
         self.config = {}  # font size, word wrap, line ending, etc
         self.undo_stack = [('close_view', {'view_id': view_id})]
         self.lines = Lines(shared_styles=global_view.shared_state['styles'])
-        self.is_dirty = None
+        self.is_dirty: Optional[bool] = None
 
         self.input_field = Window(
             content=FormattedTextControl(
@@ -146,7 +146,7 @@ class View:
         ) if len(children) > 0 else Window()  # VSplit([]) will raise Exception
 
     @property
-    def current_view(self) -> SimpleView:
+    def current_view(self) -> Optional[SimpleView]:
         return self.views.get(self.shared_state['focused_view'])
 
     def set_focus(self, view_id: str) -> None:
@@ -161,13 +161,14 @@ class View:
     def _set_focus(self, view_id: str) -> None:
         # Break if multiple threads are competing for focus:
         while self.shared_state['focused_view'] == view_id:
-            if self.current_view.is_dirty is None:
-                sleep(.1)
-            else:
-                self.app.layout.focus(self.current_view.input_field)
-                break
+            if current_view := self.current_view:
+                if current_view.is_dirty is None:
+                    sleep(.1)
+                else:
+                    self.app.layout.focus(current_view.input_field)
+                    break
 
-    def new_view(self, file_path: str = None):
+    def new_view(self, file_path: Optional[str] = None):
         channel = self.manager.Queue()
         self.rpc_channel.edit_request('new_view', {} if file_path is None else {'file_path': file_path}, channel)
         # Wait for 'view-id-X' identifier:

@@ -1,7 +1,7 @@
 import logging
 import multiprocessing as mp
+from multiprocessing.synchronize import Event as MpEvent  # for typing
 import threading
-from time import sleep
 from typing import Any, Dict, Optional, Union
 from yaml import safe_load
 
@@ -35,7 +35,7 @@ def editor(files: list):
             rpc_channel.f('edit_request', {'method': method, 'params': params}, result)
         rpc_channel.edit_request = _edit_request
 
-        shared_state = manager.dict({
+        shared_state: dict[str, Any] = manager.dict({
             'settings': manager.dict(global_settings),
             'styles': manager.dict({
                 'cursor': 'reverse underline',
@@ -44,7 +44,7 @@ def editor(files: list):
             }),
             'view_channels': manager.dict(), # {view_id: view-channel-queue}
             'focused_view': 'filemanager',
-        })  # type: Dict[str, Any]
+        })
         rpc_ready = manager.Event()
 
         p = mp.Process(target=backend_process, args=(rpc_ready, shared_state, rpc_channel))
@@ -70,7 +70,7 @@ def editor(files: list):
         p.join()
 
 
-def backend_process(rpc_ready: mp.Event, shared_state: dict, rpc_channel: mp.Queue):
+def backend_process(rpc_ready: MpEvent, shared_state: dict, rpc_channel: mp.Queue):
     rpc = RpcController(shared_state, rpc_ready)
 
     thread = threading.Thread(target=RpcController.bg_worker, args=(rpc, ))
