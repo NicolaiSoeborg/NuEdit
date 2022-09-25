@@ -68,6 +68,7 @@ class RpcController:
     @staticmethod
     def bg_worker(self) -> None:
         while True:
+            # TODO: match data: case _:
             data = self._receive()
 
             # Kill bg_worker:
@@ -93,11 +94,14 @@ class RpcController:
 
                 # Xi -> View specific settings
                 else:
+                    sleep(0.1)
                     view_id = data['params'].pop('view_id')
                     p = data['params']
                     if view_id in self.shared_state['view_channels']:
                         self.shared_state['view_channels'][view_id].put((m, p))
                     else:
+                        # Unknown view id (view-id-1) not in {'view-id-1': <AutoProxy[Queue] object, typeid 'Queue' at 0x7fa676198190>}
+                        logging.warning(f"[BG] Unknown view id ({view_id}) not in {self.shared_state['view_channels']}")
                         threading.Thread(target=put_when_ready, args=(self.shared_state, view_id, m, p)).start()
 
             else:
@@ -112,7 +116,7 @@ class RpcController:
         self.shared_state['settings']['available_languages'] = languages
 
 
-def put_when_ready(shared_state, view_id, m, p):
+def put_when_ready(shared_state, view_id: str, method: str, params: dict):
     while view_id not in shared_state['view_channels']:
         sleep(.05)
-    shared_state['view_channels'][view_id].put((m, p))
+    shared_state['view_channels'][view_id].put((method, params))

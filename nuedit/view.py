@@ -85,6 +85,7 @@ class SimpleView:
 
     # Commands from Xi below
     def language_changed(self, language_id: str):
+        # {"method":"language_changed","params":{"language_id":"Plain Text","view_id":"view-id-1"}}
         pass
 
     def available_plugins(self, plugins: list):
@@ -150,6 +151,7 @@ class View:
         return self.views.get(self.shared_state['focused_view'])
 
     def set_focus(self, view_id: str) -> None:
+        logging.debug(f"[View] set_focus({view_id=})")
         self.shared_state['focused_view'] = view_id
         # When creating a new_view then set_focus will be called immediately after
         # This will create a race-condition between app.focus("LOADING...") and the
@@ -160,13 +162,16 @@ class View:
 
     def _set_focus(self, view_id: str) -> None:
         # Break if multiple threads are competing for focus:
+        logging.debug(f"[View] _set_focus({view_id=}) should eq {self.shared_state['focused_view']}")
         while self.shared_state['focused_view'] == view_id:
             if current_view := self.current_view:
                 if current_view.is_dirty is None:
                     sleep(.1)
                 else:
+                    logging.debug(f"[View] _set_focus({view_id=}) setting focus! {self.app}.focus({current_view=})")
                     self.app.layout.focus(current_view.input_field)
                     break
+            logging.debug(f"[View] _set_focus({view_id=}) waiting for {current_view=} (is_dirty)")
 
     def new_view(self, file_path: Optional[str] = None):
         channel = self.manager.Queue()

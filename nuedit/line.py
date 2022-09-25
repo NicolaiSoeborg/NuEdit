@@ -119,7 +119,9 @@ class Lines(list):
         # TODO: speedup using deque?
 
     def apply(self, update) -> Lines:
-        """ Apply 'update' and return result (self+update) """
+        """Apply 'update' and return result (self+update)
+        https://xi-editor.io/xi-editor/docs/frontend-protocol.html#update
+        """
         new_lines = Lines(shared_styles=self.shared_styles)
         new_lines.annotations = update['annotations']
 
@@ -138,7 +140,7 @@ class Lines(list):
                 old_idx += n
 
             elif op['op'] == 'invalidate':
-                # TODO: logic below is "the correct way", but very slow for big files
+                # TODO: logic below is "correct", but very slow for big files (n big)
                 for _ in range(n):
                     new_lines.append(Line(valid=False))
 
@@ -148,10 +150,11 @@ class Lines(list):
                     new_lines.append(Line(**line, valid=True))
 
             elif op['op'] == 'update':
+                # The “update” op updates the cursor and/or style of n existing lines.
                 assert len(op['lines']) == n
-                old_idx += n
-                logging.warning(f'Lines not currently used: update({update})')
-                exit(0)  # Not currently used
+                # for line in op['lines']:
+                #     assert line == {'cursor': [1], 'ln': 1}]
+                # old_idx += n
 
             else:
                 logging.warning(f'Lines not implemented: {op}({update})')
