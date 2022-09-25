@@ -56,7 +56,7 @@ setup(
     author_email='nuedit@xn--sb-lka.org',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    python_requires='>=3.8.0',  # walrus operator <3
+    python_requires='>=3.10',  # 3.8 b/c walrus operator and 3.10 b/c match-case
     url='https://xn--sb-lka.org/NicolaiSoeborg/NuEdit/',
     py_modules=['nuedit'],
     # entry_points={

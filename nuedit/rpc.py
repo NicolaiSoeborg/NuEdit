@@ -63,50 +63,37 @@ class RpcController:
         assert self.core.stdout is not None
         raw = self.core.stdout.readline()
         logging.debug("[RPC] Receiving: " + (raw or "[none] ")[:-1])
-        return json.loads(raw or '{}')
+        return json.loads(raw or '{"todo":"kill_bg_worker"}')
 
     @staticmethod
     def bg_worker(self) -> None:
         while True:
-            # TODO: match data: case _:
-            data = self._receive()
+            match self._receive():
+                case {"todo": "kill_bg_worker"}:
+                    return
 
-            # Kill bg_worker:
-            if data == {}:
-                break
+                case {'error': error}:
+                    logging.error(f'Got err from Xi: {error}')
 
-            # Xi -> General view result
-            elif 'id' in data:
-                _id = data['id']
-                if 'error' in data:
-                    pass  # TODO: handle errors?
-                else:
-                    result = data['result']
-                    self.backlog[_id ].put(result)
+                # Xi -> General view result
+                case {'id': _id, 'result': result}:
+                    self.backlog[_id].put(result)
                     del self.backlog[_id]
 
-            elif 'method' in data:
-                m = data['method']
-
                 # Xi -> RPC (settings, configs, etc)
-                if hasattr(self, 'rpc_' + m):
-                    getattr(self, 'rpc_'+m)(**data['params'])
+                case {'method': method, "params": params} if hasattr(self, f'rpc_{method}'):
+                    getattr(self, f'rpc_{method}')(**params)
 
                 # Xi -> View specific settings
-                else:
-                    sleep(0.1)
-                    view_id = data['params'].pop('view_id')
-                    p = data['params']
-                    if view_id in self.shared_state['view_channels']:
-                        self.shared_state['view_channels'][view_id].put((m, p))
-                    else:
-                        # Unknown view id (view-id-1) not in {'view-id-1': <AutoProxy[Queue] object, typeid 'Queue' at 0x7fa676198190>}
-                        logging.warning(f"[BG] Unknown view id ({view_id}) not in {self.shared_state['view_channels']}")
-                        threading.Thread(target=put_when_ready, args=(self.shared_state, view_id, m, p)).start()
+                case {'method': method, "params": {"view_id": view_id, **params}} if view_id in self.shared_state['view_channels']:
+                    self.shared_state['view_channels'][view_id].put((method, params))
+                case {'method': method, "params": {"view_id": view_id, **params}}:
+                    # Unknown view id (view-id-1) not in {'view-id-1': <AutoProxy[Queue] object, typeid 'Queue' at 0x7fa676198190>}
+                    logging.debug(f"[BG] Unknown view id ({view_id}) not in {self.shared_state['view_channels']}. Spawning put_when_ready")
+                    threading.Thread(target=put_when_ready, args=(self.shared_state, view_id, method, params)).start()
 
-            else:
-                logging.warning(f"Unhandled message: {data}")  # print to stderr?
-                exit(0)
+                case data:
+                    logging.warning(f"Unhandled message: {data}")
 
     # RPC STUFF BELOW
     def rpc_available_themes(self, themes: list = []):

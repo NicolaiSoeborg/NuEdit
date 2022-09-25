@@ -1,5 +1,4 @@
 import logging
-import multiprocessing as mp
 
 from prompt_toolkit.keys import ALL_KEYS as SPECIAL_KEYS
 from prompt_toolkit.key_binding import ConditionalKeyBindings, KeyBindings, merge_key_bindings

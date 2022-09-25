@@ -92,11 +92,13 @@ class FileList:
         @kb.add('pageup')
         def _(event: E) -> None:
             w = event.app.layout.current_window
+            assert w.render_info
             self._selected_index = max(0, self._selected_index - len(w.render_info.displayed_lines))
 
         @kb.add('pagedown')
         def _(event: E) -> None:
             w = event.app.layout.current_window
+            assert w.render_info
             self._selected_index = min(len(self.values) - 1, self._selected_index + len(w.render_info.displayed_lines))
 
         @kb.add('enter')
@@ -110,6 +112,7 @@ class FileList:
                 pass  # can't open PIPEs and other weird types
             else:
                 logging.debug(f"[FM] Opening: {self.selected}")
+                logging.debug(f"[FM] WTF IS: {self._file_handler}")
                 self._file_handler(self.selected)
 
         @kb.add('escape')
