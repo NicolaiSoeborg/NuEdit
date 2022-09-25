@@ -1,11 +1,11 @@
-import multiprocessing as mp
+from ..XiChannel import XiChannel
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from nuedit.view import View
 
 
-def multicursor(params: dict, view: 'View', rpc_channel: mp.Queue) -> None:
+def multicursor(params: dict, view: 'View', rpc_channel: XiChannel) -> None:
     sview = view.current_view
     if not sview.lines.has_selection:
         sview.config['modify_selection'] = 'add'
@@ -36,12 +36,12 @@ def multicursor(params: dict, view: 'View', rpc_channel: mp.Queue) -> None:
             sview.undo_stack.append(('multicursor_cancel', {}))
 
 
-def multicursor_skip(params: dict, view: 'View', rpc_channel: mp.Queue) -> None:
+def multicursor_skip(params: dict, view: 'View', rpc_channel: XiChannel) -> None:
     view.current_view.config['modify_selection'] = 'add_removing_current'
     # TODO: Add [esc] => "cancel ctrl+k" (but it should be removed from event_stack after pressing e.g. ctrl+d again)
 
 
-def multicursor_cancel(params: dict, view: 'View', rpc_channel: mp.Queue) -> bool:
+def multicursor_cancel(params: dict, view: 'View', rpc_channel: XiChannel) -> bool:
     if len(list(view.current_view.lines.cursors)) > 1:
         rpc_channel.edit('collapse_selections')
     else:

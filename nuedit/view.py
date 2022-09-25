@@ -15,6 +15,8 @@ from prompt_toolkit.output.color_depth import ColorDepth
 from prompt_toolkit.widgets import HorizontalLine, VerticalLine
 from prompt_toolkit.widgets.base import Border
 
+
+from .XiChannel import XiChannel
 from .line import Lines
 from .filemanager import Filemanager
 from .menu import Toolbar
@@ -22,7 +24,7 @@ from .keybinding import get_view_kb
 
 
 class SimpleView:
-    def __init__(self, file_path: Optional[str], channel: mp.Queue, view_id: str, global_view: View):
+    def __init__(self, file_path: Optional[str], channel: XiChannel, view_id: str, global_view: View):
         self.file_path = file_path
         self.view_id = view_id
         self.global_view = global_view
@@ -108,7 +110,7 @@ class SimpleView:
 
 
 class View:
-    def __init__(self, manager: mp.Manager, shared_state: dict, rpc_channel: mp.Queue):
+    def __init__(self, manager: mp.Manager, shared_state: dict, rpc_channel: XiChannel):
         self.manager = manager
         self.shared_state = shared_state
         self.rpc_channel = rpc_channel
@@ -120,7 +122,7 @@ class View:
 
         self.views = OrderedDict()  # type: Dict[str, SimpleView]
 
-        self.app = Application(
+        self.app: Application = Application(
             full_screen=True,
             mouse_support=True,
             color_depth=ColorDepth.DEPTH_24_BIT,

@@ -2,9 +2,10 @@ import logging
 import multiprocessing as mp
 from multiprocessing.synchronize import Event as MpEvent  # for typing
 import threading
-from typing import Any, Dict, Optional, Union
+from typing import Any
 from yaml import safe_load
 
+from .XiChannel import XiChannel
 from .rpc import RpcController
 from .view import View
 
@@ -16,24 +17,7 @@ def editor(files: list):
         global_settings = safe_load(f)
 
     with mp.Manager() as manager:
-        rpc_channel = manager.Queue()
-
-        # monkey patch rpc_channel to support often used "put operations"
-        def _f(method: str, params: dict = {}, result: Optional[mp.Queue] = None):
-            rpc_channel.put((method, params, result))
-        rpc_channel.f = _f
-
-        def _notify(method: str, params: Optional[dict] = {}):
-            rpc_channel.f('notify', {'method': method, 'params': params})
-        rpc_channel.notify = _notify
-
-        def _edit(method: str, params: Union[dict, list] = {}, view_id: Optional[str] = None):
-            rpc_channel.f('edit', {'method': method, 'params': params, 'view_id': view_id})
-        rpc_channel.edit = _edit
-
-        def _edit_request(method: str, params: Optional[dict], result: mp.Queue):
-            rpc_channel.f('edit_request', {'method': method, 'params': params}, result)
-        rpc_channel.edit_request = _edit_request
+        rpc_channel = XiChannel(manager.Queue())
 
         shared_state: dict[str, Any] = manager.dict({
             'settings': manager.dict(global_settings),

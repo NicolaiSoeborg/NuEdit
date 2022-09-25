@@ -5,9 +5,12 @@ from prompt_toolkit.key_binding import ConditionalKeyBindings, KeyBindings, merg
 from prompt_toolkit.filters import Condition
 
 import nuedit.actions as ACTIONS
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from nuedit.view import View
 
 
-def do_action(view, action: str, params: dict):
+def do_action(view: 'View', action: str, params: dict):
     logging.debug(f"[Action] Calling {action}({params})")
     result = getattr(ACTIONS, action)(params, view, view.rpc_channel)
     if type(result) == bool:
@@ -19,7 +22,7 @@ def do_action(view, action: str, params: dict):
             do_action(view, action, params)
 
 
-def get_view_kb(view):
+def get_view_kb(view: 'View'):
     kb_map = view.shared_state['settings']['keybindings']
     rpc_channel = view.rpc_channel
 
