@@ -24,4 +24,4 @@ def paste(params: dict, view, rpc_channel: mp.Queue) -> None:
     if text.type == 'CHARACTERS':
         rpc_channel.edit('paste', {'chars': text.text}, view_id )
     else:
-        logging.warning('[ACTION] Cant paste {}'.format(text.type))
+        logging.warning(f'[ACTION] Cant paste {text.type=}')

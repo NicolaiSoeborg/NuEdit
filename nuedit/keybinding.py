@@ -9,7 +9,7 @@ import nuedit.actions as ACTIONS
 
 
 def do_action(view, action: str, params: dict):
-    logging.debug("[Action] Calling {}({})".format(action, params))
+    logging.debug(f"[Action] Calling {action}({params})")
     result = getattr(ACTIONS, action)(params, view, view.rpc_channel)
     if type(result) == bool:
         # Actions usually returns None, but False indicate action
@@ -28,7 +28,7 @@ def get_view_kb(view):
 
     def do(key: str):
         if key not in kb_map:
-            logging.debug("[KB] Unknown special key: {}".format(key))
+            logging.debug(f"[KB] Unknown special key: {key}")
             return
 
         if kb_map[key][0] == '.':
@@ -82,7 +82,7 @@ def test_keybindings():
 
     @kb.add('<any>')
     def _(event):
-        textarea.text += "\n{}".format(event.key_sequence)
+        textarea.text += f"\n{event.key_sequence}"
 
     app = Application(layout=Layout(Window(textarea)), key_bindings=kb)
     app.run()

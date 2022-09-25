@@ -28,7 +28,7 @@ class SimpleView:
         self.global_view = global_view
         self._debug_update_timer = time()
 
-        self.config = {}  # font size, word wrap, line ending, etc
+        self.config: dict[str, Any] = {}  # font size, word wrap, line ending, etc
         self.undo_stack = [('close_view', {'view_id': view_id})]
         self.lines = Lines(shared_styles=global_view.shared_state['styles'])
         self.is_dirty: Optional[bool] = None
@@ -71,7 +71,7 @@ class SimpleView:
                 elif method == 'kill':
                     break
                 else:
-                    logging.warning("[SimpleView] Unknown method: {}".format(method))
+                    logging.warning(f"[SimpleView] Unknown method: {method}")
         except Exception as ex:
             logging.warning("[SimpleView] Got exception: ", ex)
 
@@ -173,7 +173,7 @@ class View:
         self.rpc_channel.edit_request('new_view', {} if file_path is None else {'file_path': file_path}, channel)
         # Wait for 'view-id-X' identifier:
         view_id = channel.get()
-        assert view_id not in self.shared_state['view_channels'], "Duplicate view_id: {} ({})".format(view_id, self.shared_state)
+        assert view_id not in self.shared_state['view_channels'], f"Duplicate view_id: {view_id} ({self.shared_state})"
         self.shared_state['view_channels'][view_id] = channel
         self.views[view_id] = SimpleView(file_path, channel, view_id, self)
         self.set_focus(view_id)

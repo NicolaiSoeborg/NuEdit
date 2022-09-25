@@ -69,9 +69,9 @@ class Line:
         self.valid = valid
         self.cursor = kwargs.get('cursor', [])
         self.styles = kwargs.get('styles', [])
-        assert len(self.styles) % 3 == 0, "Styles should be a multiple of 3: {}".format(self)
+        assert len(self.styles) % 3 == 0, f"Styles should be a multiple of 3: {self}"
         for k in kwargs.keys():
-            assert hasattr(self, k), 'Unknown line property: {}'.format(k)
+            assert hasattr(self, k), f'Unknown line property: {k}'
 
     def get_formatted(self, annotations: list, shared_styles: dict, sview):
         output = [
@@ -91,14 +91,14 @@ class Line:
 
         # Add annotation
         for annotation in annotations:
-            assert len(annotation['ranges']) == annotation['n'], "Bad annotation: {}".format(annotation)
+            assert len(annotation['ranges']) == annotation['n'], f"Bad annotation: {annotation}"
             style = shared_styles[annotation['type']]
 
             for (start_line, start_col, end_line, end_col) in annotation['ranges']:
 
                 # self.ln is 1 indexed:
                 if start_line <= self.ln - 1 <= end_line:
-                    # logging.debug("self.ln-1={}, start_line={}, start_col={}, end_line={}, end_col={}".format(self.ln-1, start_line, start_col, end_line, end_col))
+                    # logging.debug(f"self.ln-1={self.ln-1}, {start_line=}, {start_col=}, {end_line=}, {end_col=}")
                     start_idx = start_col if start_line == self.ln - 1 else 0
                     end_idx   = end_col   if end_line   == self.ln - 1 else len(output)
                     for i in range(start_idx, end_idx):
@@ -128,7 +128,7 @@ class Lines(list):
             n = op['n']  # lines affected
 
             if op['op'] == 'copy':
-                # assert len(self[old_idx : old_idx + n]) == n, '{}[{} : {}+{}] != {}'.format(self, old_idx, old_idx, n, n)
+                # assert len(self[old_idx : old_idx + n]) == n, f'{self}[{old_idx} : {old_idx}+{n}] != {n}'
                 # new_lines = new_lines + self[old_idx : old_idx + n]
                 for i in range(old_idx, old_idx + n):
                     new_lines.append(self[i])
@@ -150,11 +150,11 @@ class Lines(list):
             elif op['op'] == 'update':
                 assert len(op['lines']) == n
                 old_idx += n
-                logging.warning('Lines not currently used: update({})'.format(update))
+                logging.warning(f'Lines not currently used: update({update})')
                 exit(0)  # Not currently used
 
             else:
-                logging.warning('Lines not implemented: {}({})'.format(op, update))
+                logging.warning(f'Lines not implemented: {op}({update})')
                 exit(0)
 
         assert type(new_lines) == Lines

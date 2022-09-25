@@ -47,6 +47,7 @@ def editor(files: list):
         })
         rpc_ready = manager.Event()
 
+        logging.debug("[MAIN] Starting backend process")
         p = mp.Process(target=backend_process, args=(rpc_ready, shared_state, rpc_channel))
         p.start()
 

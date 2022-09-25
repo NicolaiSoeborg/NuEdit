@@ -51,12 +51,10 @@ class RpcController:
         assert result is None
         stdout, stderr = self.core.communicate('')  # TODO save buffers, etc?
         if self.core.returncode != 0:
-            logging.warning("[RPC] Killing Xi-core with exit code {}\nStdout: {}\nStdErr: {}".format(
-                self.core.returncode,
-                stdout, stderr))
+            logging.warning(f"[RPC] Killing Xi-core with exit code {self.core.returncode}\n{stdout=}\n{stderr=}")
 
     def send_raw_dict(self, d: dict) -> None:
-        logging.debug("[RPC] Sending {}".format(json.dumps(d)))
+        logging.debug(f"[RPC] Sending {json.dumps(d)}")
         assert self.core.stdin is not None
         self.core.stdin.write(json.dumps(d) + "\n")
         self.core.stdin.flush()
@@ -64,7 +62,7 @@ class RpcController:
     def _receive(self) -> dict:
         assert self.core.stdout is not None
         raw = self.core.stdout.readline()
-        logging.debug("[RPC] Receiving {}".format((raw or "[none] ")[:-1]))
+        logging.debug("[RPC] Receiving: " + (raw or "[none] ")[:-1])
         return json.loads(raw or '{}')
 
     @staticmethod
@@ -103,7 +101,7 @@ class RpcController:
                         threading.Thread(target=put_when_ready, args=(self.shared_state, view_id, m, p)).start()
 
             else:
-                logging.warning("Unhandled message: {}".format(data))  # print to stderr?
+                logging.warning(f"Unhandled message: {data}")  # print to stderr?
                 exit(0)
 
     # RPC STUFF BELOW

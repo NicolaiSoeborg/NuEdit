@@ -101,15 +101,15 @@ class FileList:
 
         @kb.add('enter')
         def _(event: E) -> None:
-            logging.debug("[FM] Selected: {}".format(self.selected))
+            logging.debug(f"[FM] Selected: {self.selected}")
             if self.selected.endswith('/'):
-                logging.debug("[FM] Changing dir: {}".format(self.selected))
+                logging.debug(f"[FM] Changing dir: {self.selected}")
                 self.fm.change_dir(Path(self.selected))
             elif self.selected.endswith('|'):
-                logging.debug("[FM] TODO handle: {}".format(self.selected))
+                logging.debug(f"[FM] TODO handle: {self.selected}")
                 pass  # can't open PIPEs and other weird types
             else:
-                logging.debug("[FM] Opening: {}".format(self.selected))
+                logging.debug(f"[FM] Opening: {self.selected}")
                 self._file_handler(self.selected)
 
         @kb.add('escape')

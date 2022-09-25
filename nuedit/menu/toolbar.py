@@ -26,5 +26,5 @@ class Toolbar:
         ], height=1, style='bg:#3200ff')
 
     def handler(self, buffer: Buffer):
-        logging.debug("[Toolbar] handler got: " + buffer.text)
+        logging.debug(f"[Toolbar] handler got: {buffer.text}")
         return False  # <-- delete text
