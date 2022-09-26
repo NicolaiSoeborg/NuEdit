@@ -3,7 +3,7 @@ from ..menu import SearchToolbar
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from nuedit.view import View
+    from ..view import View
 
 
 def find(params: dict, view: 'View', rpc_channel: XiChannel) -> None:

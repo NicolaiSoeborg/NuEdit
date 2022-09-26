@@ -14,14 +14,16 @@ from prompt_toolkit.layout.processors import (
 )
 
 from .toolbar import Toolbar
-
+from typing import TYPE_CHECKING, Optional
+if TYPE_CHECKING:
+    from ..view import View
 
 class SearchToolbar(Toolbar):
-    def __init__(self, view):
+    def __init__(self, view: 'View'):
         super(SearchToolbar, self).__init__(view)
 
         self._find_idx = 0
-        self._last_search_str = None
+        self._last_search_str: Optional[str] = None
 
         self.control = BufferControl(
             focus_on_click=True,
@@ -49,7 +51,7 @@ class SearchToolbar(Toolbar):
                 'case_sensitive': 'i' not in regex.group(2) if regex else False,
                 'regex': bool(regex),
                 # 'whole_words' : False,
-            })
+            }, self.view.view_id)
             self._find_idx = 0
             self._last_search_str = buffer.text
             return True  # <-- keep text
@@ -64,12 +66,12 @@ class SearchToolbar(Toolbar):
             'line': start_line,
             'col': start_col,
             'ty': {'select': {'granularity': 'point', 'multi': False}}
-        })
+        }, self.view.view_id)
         self.view.rpc_channel.edit('gesture', {
             'line': end_line,
             'col': end_col,
             'ty': {'select_extend': {'granularity': 'point', 'multi': False}}
-        })
+        }, self.view.view_id)
         return True  # <-- keep text
 
     def _get_kb(self):

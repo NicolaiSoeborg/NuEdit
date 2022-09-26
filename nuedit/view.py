@@ -53,7 +53,7 @@ class SimpleView:
         #def _resizeHandler(signum, frame):
         #    proc = os.popen('stty size', 'r')
         #    rows, columns = proc.read().split()
-        #    self.rpc_channel.edit('scroll', [int(columns), int(rows)])
+        #    self.rpc_channel.edit('scroll', {int(columns), int(rows)}, self.view_id)
         #    #        'width': int(columns),  # <-- TODO: in pixels
         #    #        'height': int(rows)     # .input_field.width, ?
         #    logging.debug("[RESIZE] {} {} | w/h:{}/{}".format(signum, frame, columns, rows))
@@ -110,7 +110,7 @@ class SimpleView:
 
 
 class View:
-    def __init__(self, manager: mp.Manager, shared_state: dict, rpc_channel: XiChannel):
+    def __init__(self, manager: mp.managers.SyncManager, shared_state: dict, rpc_channel: XiChannel):
         self.manager = manager
         self.shared_state = shared_state
         self.rpc_channel = rpc_channel
@@ -120,7 +120,7 @@ class View:
 
         self.toolbar = Toolbar(self)
 
-        self.views = OrderedDict()  # type: Dict[str, SimpleView]
+        self.views: dict[str, SimpleView] = OrderedDict()
 
         self.app: Application = Application(
             full_screen=True,
@@ -177,7 +177,7 @@ class View:
 
     def new_view(self, file_path: Optional[str] = None):
         channel = self.manager.Queue()
-        self.rpc_channel.edit_request('new_view', {} if file_path is None else {'file_path': file_path}, channel)
+        self.rpc_channel.put('new_view', {} if file_path is None else {'file_path': file_path}, result=channel)
         # Wait for 'view-id-X' identifier:
         view_id = channel.get()
         assert view_id not in self.shared_state['view_channels'], f"Duplicate view_id: {view_id} ({self.shared_state})"
@@ -186,8 +186,8 @@ class View:
         self.set_focus(view_id)
 
     def close_view(self, view_id: str):
-        self.rpc_channel.notify('close_view', {'view_id': view_id})
-        self.shared_state['view_channels'][view_id].put(('kill', {}))
+        self.rpc_channel.put('close_view', {'view_id': view_id})
+        self.shared_state['view_channels'][view_id].put(('kill'))
         self.views[view_id].thread.join()
         del self.shared_state['view_channels'][view_id]
         del self.views[view_id]

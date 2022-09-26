@@ -7,7 +7,7 @@ from prompt_toolkit.filters import Condition
 import nuedit.actions as ACTIONS
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from nuedit.view import View
+    from .view import View
 
 
 def do_action(view: 'View', action: str, params: dict):
@@ -38,7 +38,8 @@ def get_view_kb(view: 'View'):
             assert action[0] != '_'
             do_action(view, action, {})
         else:
-            rpc_channel.edit(kb_map[key])
+            # params from config? Currently we just default to params always {}:
+            rpc_channel.edit(kb_map[key], {}, view.current_view.view_id)
 
     @kb.add('escape', '[', '1', ';', '4', 'A', eager=True)
     def c_s_up(_): do('c-s-up')
@@ -63,7 +64,7 @@ def get_view_kb(view: 'View'):
             if sequence.key in SPECIAL_KEYS:
                 do(sequence.key)
             else:
-                rpc_channel.edit('insert', {'chars': sequence.key})
+                rpc_channel.edit('insert', {'chars': sequence.key}, view.current_view.view_id)
 
     return ConditionalKeyBindings(kb, filter=Condition(lambda: view.current_view is not None))
 

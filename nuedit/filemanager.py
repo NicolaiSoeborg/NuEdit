@@ -22,6 +22,10 @@ from prompt_toolkit.key_binding.key_processor import KeyPressEvent as E
 from prompt_toolkit.mouse_events import MouseEvent, MouseEventType
 from prompt_toolkit.filters import Condition
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .view import View
+
 # from prompt_toolkit.formatted_text import HTML
 # from prompt_toolkit.completion import Completer, Completion
 # class MyCustomCompleter(Completer):
@@ -77,6 +81,19 @@ class FileList:
     def selected(self) -> str:
         return self.values[self._selected_index]
 
+    def _on_enter(self):
+        logging.debug(f"[FM] Selected: {self.selected}")
+        if self.selected.endswith('/'):
+            logging.debug(f"[FM] Changing dir: {self.selected}")
+            self.fm.change_dir(Path(self.selected))
+        elif self.selected.endswith('|'):
+            logging.warning(f"[FM] TODO handle: {self.selected}")
+            pass  # can't open PIPEs and other weird types
+        else:
+            logging.debug(f"[FM] Opening: {self.selected}")
+            # assert callable(self._file_handler)
+            self._file_handler(self.selected)
+
     def _get_filemanager_kb(self, fm: Filemanager):
         kb_active = Condition(lambda: fm.view.fileman_visible)
         kb = KeyBindings()
@@ -103,17 +120,7 @@ class FileList:
 
         @kb.add('enter')
         def _(event: E) -> None:
-            logging.debug(f"[FM] Selected: {self.selected}")
-            if self.selected.endswith('/'):
-                logging.debug(f"[FM] Changing dir: {self.selected}")
-                self.fm.change_dir(Path(self.selected))
-            elif self.selected.endswith('|'):
-                logging.debug(f"[FM] TODO handle: {self.selected}")
-                pass  # can't open PIPEs and other weird types
-            else:
-                logging.debug(f"[FM] Opening: {self.selected}")
-                logging.debug(f"[FM] WTF IS: {self._file_handler}")
-                self._file_handler(self.selected)
+            self._on_enter()
 
         @kb.add('escape')
         def _(event: E) -> None:
@@ -133,7 +140,7 @@ class FileList:
         def mouse_handler(mouse_event: MouseEvent) -> None:
             if mouse_event.event_type == MouseEventType.MOUSE_UP:
                 self._selected_index = mouse_event.position.y
-                self._handler(self.values[self._selected_index])
+                self._on_enter()
 
         result = []
         for i, value in enumerate(self.values):
@@ -151,7 +158,7 @@ class FileList:
 
 
 class Filemanager:
-    def __init__(self, view):
+    def __init__(self, view: 'View'):
         self.view = view
         self.cwd: Path = Path('./').resolve()
         self.cancel_button = Button(text="Exit", handler=self.exit_handler)

@@ -14,10 +14,10 @@ def multicursor(params: dict, view: 'View', rpc_channel: XiChannel) -> None:
                 'line': line,
                 'col': col,
                 'ty': {'select': {'granularity': 'word', 'multi': True}}
-            })
+            }, sview.view_id)
         rpc_channel.edit('selection_for_find', {
             'case_sensitive': False,
-        })
+        }, sview.view_id)
         # Remove any old multicursor_cancel, if they are left:
         while ('multicursor_cancel', {}) in sview.undo_stack:
             sview.undo_stack.remove(('multicursor_cancel', {}))
@@ -29,7 +29,7 @@ def multicursor(params: dict, view: 'View', rpc_channel: XiChannel) -> None:
             'wrap_around': True,
             'allow_same': True,
             'modify_selection': sview.config.get('modify_selection', 'add'),
-        })
+        }, sview.view_id)
         sview.config['modify_selection'] = 'add'
         # Add
         if ('multicursor_cancel', {}) not in sview.undo_stack:
@@ -42,8 +42,9 @@ def multicursor_skip(params: dict, view: 'View', rpc_channel: XiChannel) -> None
 
 
 def multicursor_cancel(params: dict, view: 'View', rpc_channel: XiChannel) -> bool:
-    if len(list(view.current_view.lines.cursors)) > 1:
-        rpc_channel.edit('collapse_selections')
+    sview = view.current_view
+    if len(list(sview.lines.cursors)) > 1:
+        rpc_channel.edit('collapse_selections', sview.view_id)
     else:
         # multicursors has already been cancel/removed, so do next "Esc operation"
         return False
