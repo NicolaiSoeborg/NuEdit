@@ -7,9 +7,9 @@ if TYPE_CHECKING:
 
 def multicursor(params: dict, view: 'View', rpc_channel: XiChannel) -> None:
     sview = view.current_view
-    if not sview.lines.has_selection:
+    if not sview.line_cache.has_selection:
         sview.config['modify_selection'] = 'add'
-        for (line, col) in sview.lines.cursors:
+        for (line, col) in sview.line_cache.cursors:
             rpc_channel.edit('gesture', {
                 'line': line,
                 'col': col,
@@ -43,8 +43,8 @@ def multicursor_skip(params: dict, view: 'View', rpc_channel: XiChannel) -> None
 
 def multicursor_cancel(params: dict, view: 'View', rpc_channel: XiChannel) -> bool:
     sview = view.current_view
-    if len(list(sview.lines.cursors)) > 1:
-        rpc_channel.edit('collapse_selections', sview.view_id)
+    if len(list(sview.line_cache.cursors)) > 1:
+        rpc_channel.edit('collapse_selections', {}, sview.view_id)
     else:
         # multicursors has already been cancel/removed, so do next "Esc operation"
         return False

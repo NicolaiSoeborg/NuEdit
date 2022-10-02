@@ -5,17 +5,16 @@ from typing import Optional, Tuple, Union, TypedDict
 #class XiParams(TypedDict):
 #    result: Optional[mp.Queue]
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from .rpc import RpcController
 
 
 class XiChannel:
     def __init__(self, rpc_channel: mp.Queue):
-        self.rpc_channel = rpc_channel
+        self._channel = rpc_channel
 
     def put(self, method: str, params: dict = {}, result: Optional[mp.Queue] = None):
-        self.rpc_channel.put((method, params, result))
+        self._channel.put((method, params, result))
 
     def edit(self, method: str, params: dict, view_id: str):
         """ Helper for creating:
@@ -26,7 +25,7 @@ class XiChannel:
 
     def process_requests(self, rpc: 'RpcController') -> None:
         while True:
-            (method, params, result) = self.rpc_channel.get()
+            (method, params, result) = self._channel.get()
             logging.debug(f"process_requests: {method=} {params=} {result=}")
             if method == 'kill':
                 logging.debug(f"process_requests Killing")

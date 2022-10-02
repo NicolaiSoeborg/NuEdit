@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+from operator import length_hint
 import threading
 import multiprocessing as mp
 from collections import OrderedDict
@@ -8,6 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from prompt_toolkit import Application
 from prompt_toolkit.clipboard import InMemoryClipboard
+from prompt_toolkit.formatted_text import FormattedText  #, HTML('<u>underline</u>')
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.containers import DynamicContainer, Container, Window, HSplit, VSplit
 from prompt_toolkit.layout.layout import Layout
@@ -15,16 +17,15 @@ from prompt_toolkit.output.color_depth import ColorDepth
 from prompt_toolkit.widgets import HorizontalLine, VerticalLine
 from prompt_toolkit.widgets.base import Border
 
-
 from .XiChannel import XiChannel
-from .line import Lines
+from .line_cache import LineCache
+from .keybinding import get_view_kb
 from .filemanager import Filemanager
 from .menu import Toolbar
-from .keybinding import get_view_kb
 
 
 class SimpleView:
-    def __init__(self, file_path: Optional[str], channel: XiChannel, view_id: str, global_view: View):
+    def __init__(self, file_path: Optional[str], channel: XiChannel, view_id: str, global_view: GlobalView):
         self.file_path = file_path
         self.view_id = view_id
         self.global_view = global_view
@@ -32,16 +33,17 @@ class SimpleView:
 
         self.config: dict[str, Any] = {}  # font size, word wrap, line ending, etc
         self.undo_stack = [('close_view', {'view_id': view_id})]
-        self.lines = Lines(shared_styles=global_view.shared_state['styles'])
         self.is_dirty: Optional[bool] = None
 
+        self.line_cache = LineCache(global_view)
         self.input_field = Window(
             content=FormattedTextControl(
-                key_bindings=get_view_kb(global_view),
+                key_bindings=get_view_kb(self.global_view),
                 show_cursor=False,
                 text="LOADING...",
             )
         )
+
         self.lineNo = Window(width=2, content=FormattedTextControl(text="  "))
         self.container = VSplit([self.lineNo, VerticalLine(), self.input_field])
 
@@ -62,54 +64,73 @@ class SimpleView:
         #_resizeHandler(None, None)
 
     def __pt_container__(self) -> Container:
-        return self.container
+        return self.input_field
 
     def _bg_worker(self, channel):
         try:
             while True:
                 (method, params) = channel.get()
-                if hasattr(self, method):
-                    getattr(self, method)(**params)
-                elif method == 'kill':
+                logging.debug(f"[SimpleView] _bg_worker: {method=} {params=}")
+                if method == 'kill':
                     break
+                elif hasattr(self, f'rpc_{method}'):
+                    getattr(self, f'rpc_{method}')(**params)
                 else:
                     logging.warning(f"[SimpleView] Unknown method: {method}")
         except Exception as ex:
             logging.warning("[SimpleView] Got exception: ", ex)
 
-    def _update_controls(self):
-        new_text, new_lineNo, len_of_lineno_col = self.lines.get_formatted(self)
-        self.lineNo.content.text = new_lineNo
-        self.lineNo.width = len_of_lineno_col
-        self.input_field.content.text = new_text
-        self.global_view.app.invalidate()  # <-- redraw content
-        logging.debug("[SimpleView] Update + redraw took {:.5f}s".format(time() - self._debug_update_timer))
-
     # Commands from Xi below
-    def language_changed(self, language_id: str):
+    def rpc_language_changed(self, language_id: str):
         # {"method":"language_changed","params":{"language_id":"Plain Text","view_id":"view-id-1"}}
         pass
 
-    def available_plugins(self, plugins: list):
+    def rpc_available_plugins(self, plugins: list):
         self.config['plugins'] = plugins
 
-    def config_changed(self, changes: dict):
+    def rpc_config_changed(self, changes: dict):
+        # {'changes': {'auto_indent': True, 'autodetect_whitespace': True, 'font_face': 'InconsolataGo', 'font_size': 14, 'line_ending': '\n', 'plugin_search_path': [], 'save_with_newline': True, 'scroll_past_end': False, 'surrounding_pairs': [['"', '"'], ["'", "'"], ['{', '}'], ['[', ']']], 'tab_size': 4, 'translate_tabs_to_spaces': True, 'use_tab_stops': True, 'word_wrap': False, 'wrap_width': 0}}
         self.config.update(changes)
 
-    def update(self, update: dict):
+    def rpc_update(self, update: dict):
         self._debug_update_timer = time()
         self.is_dirty = not update['pristine']
-        self.lines = self.lines.apply(update)
-        self._update_controls()
+        self.line_cache.apply_update(update)
 
-    def scroll_to(self, col: int, line: int):
+        len_of_lineno_col = len(str(self.line_cache.max_ln))
+        self.lineNo.content = FormattedTextControl(text='\n'.join(
+            str(l.ln).rjust(len_of_lineno_col, ' ') if l else '?'*len_of_lineno_col
+            for l in self.line_cache.lines
+        ))
+        self.lineNo.width = len_of_lineno_col
+
+        # Redraw
+        # https://python-prompt-toolkit.readthedocs.io/en/master/pages/printing_text.html#style-text-tuples
+        output = []
+        for line in self.line_cache.lines:
+            logging.debug(f'[SimpleView] {line.text=}')
+            if line:
+                for style_text_pair in line.get_style_text_pairs(self.line_cache.annotations):
+                    logging.debug(f'[SimpleView] {style_text_pair=}')
+                    output.append(style_text_pair)
+            else:
+                output.append(('', '\n'))
+        self.input_field.content = FormattedTextControl(
+            show_cursor=False,
+            text=FormattedText(output)
+        )
+
+        self.global_view.app.invalidate()  # <-- redraw content
+        logging.debug("[SimpleView] Update + redraw took {:.5f}s".format(time() - self._debug_update_timer))
+
+    def rpc_scroll_to(self, col: int, line: int):
         pass  # "frontend should scroll its cursor to the given line and column."
 
-    def find_status(self, queries: list):
+    def rpc_find_status(self, queries: list):
         pass  # for query in queries:
 
 
-class View:
+class GlobalView:
     def __init__(self, manager: mp.managers.SyncManager, shared_state: dict, rpc_channel: XiChannel):
         self.manager = manager
         self.shared_state = shared_state
@@ -124,11 +145,12 @@ class View:
 
         self.app: Application = Application(
             full_screen=True,
-            mouse_support=True,
+            mouse_support=shared_state['settings'].get('mouse_support', False),
             color_depth=ColorDepth.DEPTH_24_BIT,
             clipboard=InMemoryClipboard(),
             enable_page_navigation_bindings=False,
             # key_bindings=get_filemanager_kb()
+            key_bindings=get_view_kb(self),
             layout=Layout(
                 container=HSplit([
                     DynamicContainer(self._get_children),
@@ -187,7 +209,7 @@ class View:
 
     def close_view(self, view_id: str):
         self.rpc_channel.put('close_view', {'view_id': view_id})
-        self.shared_state['view_channels'][view_id].put(('kill'))
+        self.shared_state['view_channels'][view_id].put(('kill', {}))
         self.views[view_id].thread.join()
         del self.shared_state['view_channels'][view_id]
         del self.views[view_id]

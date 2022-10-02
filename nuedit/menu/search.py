@@ -44,7 +44,7 @@ class SearchToolbar(Toolbar):
     def handler(self, buffer: Buffer):
         regex = re.fullmatch(r'/(.+)/([gi]?)', buffer.text)
 
-        found_result = [a for a in self.view.current_view.lines.annotations if a['type'] == 'find']
+        found_result = [a for a in self.view.current_view.line_cache.annotations if a['type'] == 'find']
         if len(found_result) == 0 or self._last_search_str != buffer.text:
             self.view.rpc_channel.edit('find', {
                 'chars': regex.group(1) if regex else buffer.text,

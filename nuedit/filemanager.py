@@ -24,7 +24,7 @@ from prompt_toolkit.filters import Condition
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .view import View
+    from .view import GlobalView
 
 # from prompt_toolkit.formatted_text import HTML
 # from prompt_toolkit.completion import Completer, Completion
@@ -158,7 +158,7 @@ class FileList:
 
 
 class Filemanager:
-    def __init__(self, view: 'View'):
+    def __init__(self, view: 'GlobalView'):
         self.view = view
         self.cwd: Path = Path('./').resolve()
         self.cancel_button = Button(text="Exit", handler=self.exit_handler)

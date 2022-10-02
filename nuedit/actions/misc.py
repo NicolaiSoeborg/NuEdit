@@ -18,7 +18,7 @@ def new_view(params: dict, view: 'View', rpc_channel: XiChannel) -> None:
 
 def close_view(params: dict, view: 'View', rpc_channel: XiChannel) -> None:
     view_id = params['view_id']
-    if view.views[view_id].lines.has_selection:
+    if view.views[view_id].line_cache.has_selection:
         rpc_channel.edit('collapse_selections', {}, view_id)
         view.views[view_id].undo_stack.append(('close_view', {'view_id': view_id}))  # <-- re-add this action
     else:

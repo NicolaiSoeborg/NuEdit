@@ -1,5 +1,7 @@
 version: 1.0.0
 
+mouse_support: False
+
 keybindings:
   # <key reported by prompt-toolkit> : <command to send to Xi>
   # ".commands" are special commands implemented in the `Actions` class.

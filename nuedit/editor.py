@@ -3,13 +3,19 @@ from multiprocessing.managers import DictProxy
 import multiprocessing as mp
 from multiprocessing.synchronize import Event as MpEvent  # for typing
 import threading
-from typing import Any
+from typing import Any, TypedDict
 from yaml import safe_load
 
 from .XiChannel import XiChannel
 from .rpc import RpcController
-from .view import View
+from .view import GlobalView
 
+
+#class SharedSettings(TypedDict):
+#    settings: DictProxy[str, Any]
+#    styles: DictProxy[Any, str]  # maps strings (e.g "finstrd") but also "style id" (e.g. 0) to a style (e.g. "bg:black")
+#    view_channels: DictProxy[str, mp.Queue]  # {view_id: view_channel_queue}
+#    focused_view: str
 
 def editor(files: list):
     logging.debug("[MAIN] App started")
@@ -21,7 +27,7 @@ def editor(files: list):
         # XiChannel is a mp.Queue with a few fancy methods to put json in the right format
         rpc_channel = XiChannel(manager.Queue())
 
-        shared_state: DictProxy[str, Any] = manager.dict({
+        shared_state: DictProxy[str, str|DictProxy[str|int, Any]] = manager.dict({
             'settings': manager.dict(global_settings),
             'styles': manager.dict({
                 'cursor': 'reverse underline',
@@ -41,7 +47,7 @@ def editor(files: list):
         rpc_ready.wait()
         logging.debug("[MAIN] RPC ready")
 
-        v = View(manager, shared_state, rpc_channel)
+        v = GlobalView(manager, shared_state, rpc_channel)
         v.fileman_visible = len(files) == 0
         for file in files:
             v.new_view(file)
