@@ -44,6 +44,7 @@ class SimpleView:
             )
         )
 
+        self.xy: Optional[tuple[int, int]] = None
         self.lineNo = Window(width=2, content=FormattedTextControl(text="  "))
         self.container = VSplit([self.lineNo, VerticalLine(), self.input_field])
 
@@ -67,18 +68,15 @@ class SimpleView:
         return self.input_field
 
     def _bg_worker(self, channel):
-        try:
-            while True:
-                (method, params) = channel.get()
-                logging.debug(f"[SimpleView] _bg_worker: {method=} {params=}")
-                if method == 'kill':
-                    break
-                elif hasattr(self, f'rpc_{method}'):
-                    getattr(self, f'rpc_{method}')(**params)
-                else:
-                    logging.warning(f"[SimpleView] Unknown method: {method}")
-        except Exception as ex:
-            logging.warning("[SimpleView] Got exception: ", ex)
+        while True:
+            (method, params) = channel.get()
+            logging.debug(f"[SimpleView] _bg_worker: {method=} {params=}")
+            if method == 'kill':
+                break
+            elif hasattr(self, f'rpc_{method}'):
+                getattr(self, f'rpc_{method}')(**params)
+            else:
+                logging.warning(f"[SimpleView] Unknown method: {method}")
 
     # Commands from Xi below
     def rpc_language_changed(self, language_id: str):
@@ -108,10 +106,9 @@ class SimpleView:
         # https://python-prompt-toolkit.readthedocs.io/en/master/pages/printing_text.html#style-text-tuples
         output = []
         for line in self.line_cache.lines:
-            logging.debug(f'[SimpleView] {line.text=}')
             if line:
                 for style_text_pair in line.get_style_text_pairs(self.line_cache.annotations):
-                    logging.debug(f'[SimpleView] {style_text_pair=}')
+                    # logging.debug(f'[SimpleView] {style_text_pair=}')
                     output.append(style_text_pair)
             else:
                 output.append(('', '\n'))
@@ -124,7 +121,8 @@ class SimpleView:
         logging.debug("[SimpleView] Update + redraw took {:.5f}s".format(time() - self._debug_update_timer))
 
     def rpc_scroll_to(self, col: int, line: int):
-        pass  # "frontend should scroll its cursor to the given line and column."
+        # "frontend should scroll its cursor to the given line and column."
+        self.xy = (col, line)
 
     def rpc_find_status(self, queries: list):
         pass  # for query in queries:

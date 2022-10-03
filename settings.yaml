@@ -1,6 +1,7 @@
 version: 1.0.0
 
 mouse_support: False
+show_xy: True
 
 keybindings:
   # <key reported by prompt-toolkit> : <command to send to Xi>

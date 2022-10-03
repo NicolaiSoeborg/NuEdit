@@ -26,7 +26,6 @@ class XiChannel:
     def process_requests(self, rpc: 'RpcController') -> None:
         while True:
             (method, params, result) = self._channel.get()
-            logging.debug(f"process_requests: {method=} {params=} {result=}")
             if method == 'kill':
                 logging.debug(f"process_requests Killing")
                 rpc.kill()

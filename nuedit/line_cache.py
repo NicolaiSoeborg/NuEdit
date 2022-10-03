@@ -28,13 +28,19 @@ class SingleLine:
         self.styles = styles
 
     def get_style_text_pairs(self, annotations: AnnotationSet) -> Iterator[Tuple[str, str]]:
-        logging.debug(f"get_style_text_pairs: {self.styles=} {self.text=}")
+        """ Returns (style, text) pairs """
+        logging.debug(f"get_style_text_pairs: {self.cursor=} {self.styles=} {self.text=}")
 
-        # shared_styles['cursor'] # {'cursor': 'reverse underline', 'todo': 'pass from global_view'}
-        cursor_style = 'reverse underline'
+        # pass from global
+        shared_state = {'styles': {
+            'cursor': 'reverse underline',
+            0: 'reverse',
+            1: 'fg:ansiyellow bg:black',
+        }}
 
         # Idé: lav par af (start, end, type) pairs og iter over zip()
-        pairs: list[Tuple[int, int, str]] = []  # (start, length, style)
+        #pairs: list[Tuple[int, int, str]] = []  # (start, length, style)
+        dumb_poc = {}
 
         # Add style:
         n_styles = len(self.styles)
@@ -44,18 +50,27 @@ class SingleLine:
             style_len = self.styles[i + 1]
             style_id = self.styles[i + 2]
             last_end = start_idx + style_len
-            pairs.append((start_idx, style_len, style_id))
+            #pairs.append((start_idx, style_len, shared_state['styles'][style_id]))
+            for asd in range(style_len): dumb_poc[start_idx+asd] = shared_state['styles'][style_id]
 
         for ann in annotations:
             ...
 
         for cursor in self.cursor:
-            pairs.append((cursor, 1, cursor_style))
+            #pairs.append((cursor, 1, shared_state['styles']['cursor']))
+            dumb_poc[cursor] = shared_state['styles']['cursor']
 
         # Keep track of overlapping styles
         # E.g. [text [selected[cursor]___] ]
-        applied_styles = []
+        #applied_styles = []
+        #while len(pairs) > 1:
+        #    (start_idx, style_len, style) = pairs.pop(0)
+        #assert len(pairs) == 1
+        #(start_idx, style_len, style) = pairs.pop()
+        #yield (style, self.text[start_idx:])  # todo: apply other styles
 
+        for i, c in enumerate(self.text):
+            yield (dumb_poc.get(i, ''), c)
 
         # Dette virker:
         # txt_style = ''  # '#44ff00 italic'
@@ -83,15 +98,12 @@ class LineCache:
         self.invalid_after = 0
         self.lines: list[Optional[SingleLine]] = []  # deque() ?
 
-    #def __pt_container__(self) -> Container:
-    #    return self.window
-
     def apply_update(self, update: dict) -> None:
         """Apply 'update' and return result (self+update)
         https://xi-editor.io/xi-editor/docs/frontend-protocol.html#update
         TODO: typeddict from https://xi-editor.io/xi-editor/docs/frontend-protocol.html#update <-- struct
         """
-        self.annotations: AnnotationSet = update['annotations']
+        self.annotations = update['annotations']
 
         index = 0
         new_lines: list[Optional[SingleLine]] = []
@@ -133,10 +145,9 @@ class LineCache:
             elif op['op'] == 'update':
                 for json_line in op["lines"]:
                     if line := self.lines[index - self.invalid_before]:
-                        if 'cursor' in json_line:
-                            line.cursor = json_line["cursor"]
-                        if 'styles' in json_line:
-                            line.style = json_line["styles"]
+                        for prop in json_line:
+                            assert hasattr(line, prop), f'Line does not have {prop=} ({json_line=})'
+                            setattr(line, prop, json_line[prop])
                     new_invalid_before, new_invalid_after = self._add_line(new_lines, new_invalid_before, new_invalid_after, line)
                     index += 1
             else:
