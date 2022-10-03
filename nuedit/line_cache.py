@@ -181,7 +181,6 @@ class LineCache:
 
     @property
     def cursors(self):
-        self.lines
         for line in self.lines:
             if line:
                 for cursor in line.cursor:

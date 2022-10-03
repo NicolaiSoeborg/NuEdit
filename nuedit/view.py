@@ -65,7 +65,7 @@ class SimpleView:
         #_resizeHandler(None, None)
 
     def __pt_container__(self) -> Container:
-        return self.input_field
+        return self.container
 
     def _bg_worker(self, channel):
         while True:
